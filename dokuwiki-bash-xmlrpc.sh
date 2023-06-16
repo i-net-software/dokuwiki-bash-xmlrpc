@@ -106,7 +106,7 @@ convert_xml_to_json() {
   # Convert XML to JSON using jq
 
   # Remove XML version header using tail command
-  local xml_content_without_header=$(echo "$xml_content" | tail -n +2)
+  local xml_content_without_header=$(echo -E "$xml_content" | tail -n +2)
 
   # Convert XML to JSON using xq
   local json=$(echo "$xml_content_without_header" | xq)
@@ -155,13 +155,13 @@ dokuwiki_login() {
     local user="$1"
     local password="$2"
 
-    local request=$(printf '
+    local request=$(jq -n --arg user "$user" --arg password "$password" '
     {
         "param" : [
-            { "value" : { "string" : "%s" } },
-            { "value" : { "string" : "%s" } }
+            { "value" : { "string" : $user } },
+            { "value" : { "string" : $password } }
         ]
-    }' "$user" "$password")
+    }')
 
     echo $(send_request "dokuwiki.login" "$request" | jq -r '.methodResponse.params.param.value.boolean')
 }
@@ -188,24 +188,24 @@ dokuwiki_pageList() {
     local depth="${3:-0}"
 
     # depth = 0 -> all sub pages
-    local request=$(printf '
+    local request=$(jq -n --arg namespace "$namespace" --arg pattern "$pattern" --arg depth "$depth" '
     {
         "param" : [
-            { "value" : { "string" : "%s" } },
+            { "value" : { "string" : $namespace } },
             { "value" : { "struct" : {
                 "member" : [
                     {
                         "name": "pattern",
-                        "value": { "string" : "%s" }
+                        "value": { "string" : $pattern }
                     },
                     {
                         "name": "depth",
-                        "value": { "int" : "%s" }
+                        "value": { "int" : $depth }
                     }
                 ]
             } } }
         ]
-    }' "$namespace" "$pattern" "$depth")
+    }')
 
     echo $(send_request "dokuwiki.getPagelist" "$request" | jq -r '.methodResponse.params.param.value.array.data.value' )
 }
@@ -243,14 +243,15 @@ dokuwiki_getAllPages() {
 dokuwiki_getPage() {
     local page="$1"
 
-   local request=$(printf '
+   local request=$(jq -n --arg page "$page" '
     {
         "param" : [
-            { "value" : { "string" : "%s" } }
+            { "value" : { "string" : $page } }
         ]
-    }' "$page")
+    }')
 
-    echo $(send_request "wiki.getPage" "$request" | jq -r '.methodResponse.params.param.value.string' )
+   # Quoting is required, because this is a multiline string
+   echo "$(send_request "wiki.getPage" "$request" | jq -r '.methodResponse.params.param.value.string' )"
 }
 
 # _dokuwiki_updatePage() function
@@ -274,26 +275,25 @@ _dokuwiki_updatePage() {
     local summary="${4:-}"
     local minor="${5:-0}"
 
-    # depth = 0 -> all sub pages
-    local request=$(printf '
+    local request=$(jq -n --arg page "$page" --arg text "$text" --arg summary "$summary" --arg minor "$minor" '
     {
         "param" : [
-            { "value" : { "string" : "%s" } },
-            { "value" : { "string" : "%s" } },
+            { "value" : { "string" : $page } },
+            { "value" : { "string" : $text } },
             { "value" : { "struct" : {
                 "member" : [
                     {
                         "name": "summary",
-                        "value": { "string" : "%s" }
+                        "value": { "string" : $summary }
                     },
                     {
                         "name": "minor",
-                        "value": { "bool" : "%s" }
+                        "value": { "bool" : $minor }
                     }
                 ]
             } } }
         ]
-    }' "$page" "$text" "$summary", "$minor")
+    }')
 
     echo $(send_request "$whatToDo" "$request" | jq -r '.methodResponse.params.param.value.boolean' )
 }
@@ -310,7 +310,7 @@ _dokuwiki_updatePage() {
 #   - The boolean value indicating the success of the update operation.
 #
 dokuwiki_appendPage() {
-   _dokuwiki_updatePage "dokuwiki.appendPage" $@
+   _dokuwiki_updatePage "dokuwiki.appendPage" "$@"
 }
 
 # dokuwiki_putPage() function
@@ -325,5 +325,5 @@ dokuwiki_appendPage() {
 #   - The boolean value indicating the success of the update operation.
 #
 dokuwiki_putPage() {
-   _dokuwiki_updatePage "wiki.putPage" $@
+   _dokuwiki_updatePage "wiki.putPage" "$@"
 }
