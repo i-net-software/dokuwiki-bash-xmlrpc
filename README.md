@@ -14,7 +14,7 @@ This Bash script provides a simple XML-RPC client for interacting with a DokuWik
 1. Clone the repository:
 
    ```shell
-   git clone https://gist.github.com/b5cef0b05bb7eff96ddfe8ad81858e32.git -o dokuwiki-bash-xmlrpc
+   git clone https://github.com/i-net-software/dokuwiki-bash-xmlrpc.git
    ```
 
 2. Change directory to the repository:
